@@ -1,31 +1,42 @@
 <template>
+  <!-- Contêiner principal do catálogo -->
   <div class="catalogo">
+    <!-- Sidebar de gêneros de livros -->
     <aside class="generos-livros">
       <h2>Gêneros Disponíveis</h2>
+      <!-- Lista de gêneros de livros -->
       <ul>
+        <!-- Itera sobre os gêneros disponíveis e cria um item de lista para cada gênero -->
         <li
-          v-for="genero in generos"
-          :key="genero"
-          @click="filtrarLivrosPorGenero(genero)"
-          :class="{ ativo: generoSelecionado === genero }"
+          v-for="genero in generos"  <!-- Iteração para exibir os gêneros -->
+          :key="genero"  <!-- A chave para cada item, usada pelo Vue para otimizar a renderização -->
+          @click="filtrarLivrosPorGenero(genero)"  <!-- Ao clicar, filtra os livros por gênero -->
+          :class="{ ativo: generoSelecionado === genero }"  <!-- Aplica a classe 'ativo' ao gênero selecionado -->
         >
-          {{ genero }}
+          {{ genero }}  <!-- Exibe o nome do gênero -->
         </li>
       </ul>
     </aside>
 
+    <!-- Seção principal do catálogo de livros -->
     <section class="catalogo-livros">
       <h2>Catálogo de Livros</h2>
+      <!-- Caso não haja livros, exibe uma mensagem informando -->
       <div v-if="livros.length === 0">
         <p>Nenhum livro encontrado para o gênero selecionado.</p>
       </div>
+      <!-- Caso contrário, exibe os livros encontrados -->
       <div class="livros" v-else>
+        <!-- Itera sobre os livros e exibe cada um em um bloco -->
         <div class="livro" v-for="livro in livros" :key="livro._id">
           <div class="livro-content">
-            <!-- Fechando corretamente o router-link -->
+            <!-- Link para a página de detalhes do livro -->
             <router-link :to="{ name: 'livroSolo', params: { id: livro._id } }">
+              <!-- Exibe a capa do livro -->
               <img :src="`http://localhost:5000/${livro.coverImage}`" :alt="livro.title" />
+              <!-- Exibe o título do livro -->
               <h4>{{ livro.title }}</h4>
+              <!-- Exibe o autor do livro -->
               <p>{{ livro.author }}</p>
             </router-link> <!-- Fechando o router-link aqui -->
           </div>
@@ -36,39 +47,44 @@
 </template>
 
 <script>
-import axios from "axios";
+import axios from "axios";  // Importa o Axios para fazer requisições HTTP
 
 export default {
-  name: "CatalogoLivros",
+  name: "CatalogoLivros",  // Nome do componente
   data() {
     return {
-      livros: [],
-      todosLivros: [],
-      generos: ["Fantasia", "Terror", "Drama", "Suspense", "Ação", "Ficção"],
-      generoSelecionado: null,
+      livros: [],  // Lista de livros filtrados
+      todosLivros: [],  // Lista de todos os livros sem filtro
+      generos: ["Fantasia", "Terror", "Drama", "Suspense", "Ação", "Ficção"],  // Gêneros disponíveis
+      generoSelecionado: null,  // Gênero atualmente selecionado
     };
   },
   methods: {
+    // Método para carregar todos os livros da API
     async carregarLivros() {
       try {
+        // Faz a requisição GET para a API para obter os livros
         const response = await axios.get("http://localhost:5000/books");
-        this.todosLivros = response.data;
-        this.livros = this.todosLivros;
+        this.todosLivros = response.data;  // Armazena todos os livros
+        this.livros = this.todosLivros;  // Inicializa a lista de livros com todos os livros
       } catch (error) {
-        console.error("Erro ao carregar os livros:", error);
+        console.error("Erro ao carregar os livros:", error);  // Exibe erro caso a requisição falhe
       }
     },
+    // Método para filtrar os livros por gênero
     filtrarLivrosPorGenero(genero) {
-      this.generoSelecionado = genero;
+      this.generoSelecionado = genero;  // Define o gênero selecionado
       if (genero) {
+        // Filtra os livros pelo gênero selecionado
         this.livros = this.todosLivros.filter((livro) => livro.genre === genero);
       } else {
+        // Caso não haja gênero selecionado, exibe todos os livros
         this.livros = this.todosLivros;
       }
     },
   },
   mounted() {
-    this.carregarLivros();
+    this.carregarLivros();  // Carrega os livros assim que o componente é montado
   },
 };
 </script>
