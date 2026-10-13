@@ -125,9 +125,15 @@ pública: o serviço gratuito reinicia de tempos em tempos e volta sempre com o 
 `demo@demo.com` / `demo1234` e os seis livros de exemplo. Tudo o que for cadastrado some no
 reinício. Com um Atlas ou Mongo local, basta definir `MONGO_URI` que o modo normal assume.
 
+## Telas
+
+![Página inicial do Mange Book](docs/prints/home.png)
+
+Página inicial da demonstração em https://mange-books.vercel.app: carrossel, últimos livros adicionados (capas pela Open Library) e busca. Entre com `demo@demo.com` / `demo1234` para ver reservas, avaliações e perfil.
+
 ## Demonstração
 
-<!-- a publicar -->
+
 
 ## Equipe
 
