@@ -1,0 +1,27 @@
+# Blueprint do Render para o back-end (Express). O front vai na Vercel (frontend/vercel.json).
+# Render > New > Blueprint > apontar para este repositório. As variáveis com sync: false
+# são preenchidas no painel do Render e nunca ficam no repositório.
+services:
+  - type: web
+    name: mange-book-api
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: MONGO_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: CORS_ORIGIN
+        sync: false # ex.: https://mange-books.vercel.app,http://localhost:5173
+    # Atenção: no plano free o disco é efêmero — as capas enviadas pelo multer somem a cada
+    # deploy/reinício. Em plano pago, descomente para persistir backend/uploads:
+    # disk:
+    #   name: uploads
+    #   mountPath: /opt/render/project/src/backend/uploads
+    #   sizeGB: 1
