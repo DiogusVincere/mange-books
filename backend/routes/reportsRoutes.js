@@ -2,6 +2,9 @@ const express = require('express'); // Importa o módulo Express
 const router = express.Router(); // Cria um roteador do Express para gerenciar as rotas
 const Book = require('../models/Book'); // Importa o modelo Book, que representa os livros no banco de dados
 const User = require('../models/user'); // Importa o modelo User, que representa os usuários no banco de dados
+const { authMiddleware } = require('../middleware/auth'); // Relatórios só para quem está logado
+
+router.use(authMiddleware);
 
 // Rota para retornar livros mais reservados
 router.get('/books', async (req, res) => { // Define uma rota GET para buscar os livros mais reservados

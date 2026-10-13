@@ -33,7 +33,8 @@ exports.createReview = async (req, res) => {
         await review.save(); // Salva a avaliação no banco de dados.
         res.status(201).json({ message: 'Avaliação criada com sucesso', review }); // Retorna sucesso com os detalhes da avaliação.
     } catch (error) {
-        res.status(500).json({ message: 'Erro ao criar avaliação', error }); // Retorna erro caso ocorra falha no processo.
+        console.error('Erro ao criar avaliação' + ':', error);
+        res.status(500).json({ message: 'Erro ao criar avaliação' }); // Retorna erro caso ocorra falha no processo.
     }
 };
 
@@ -53,7 +54,8 @@ exports.getReviewsByBook = async (req, res) => {
 
         res.status(200).json(reviews); // Retorna as avaliações encontradas.
     } catch (error) {
-        res.status(500).json({ message: 'Erro ao buscar avaliações', error }); // Retorna erro caso ocorra falha no processo.
+        console.error('Erro ao buscar avaliações' + ':', error);
+        res.status(500).json({ message: 'Erro ao buscar avaliações' }); // Retorna erro caso ocorra falha no processo.
     }
 };
 
@@ -73,9 +75,10 @@ exports.deleteReview = async (req, res) => {
             return res.status(403).json({ message: 'Você não tem permissão para excluir essa avaliação' }); // Retorna erro de permissão.
         }
 
-        await review.remove(); // Remove a avaliação do banco de dados.
+        await review.deleteOne(); // Remove a avaliação (Document#remove() não existe mais no Mongoose 7+).
         res.status(200).json({ message: 'Avaliação excluída com sucesso' }); // Retorna sucesso após exclusão.
     } catch (error) {
-        res.status(500).json({ message: 'Erro ao excluir avaliação', error }); // Retorna erro caso ocorra falha no processo.
+        console.error('Erro ao excluir avaliação' + ':', error);
+        res.status(500).json({ message: 'Erro ao excluir avaliação' }); // Retorna erro caso ocorra falha no processo.
     }
 };

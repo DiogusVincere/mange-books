@@ -21,7 +21,7 @@ exports.reserveBook = async (req, res) => {
 
         res.status(201).json({ message: 'Livro reservado com sucesso.', reservation }); // Retorna sucesso e a reserva criada.
     } catch (error) {
-        res.status(500).json({ message: 'Erro ao reservar livro.', error }); // Retorna erro genérico em caso de falha.
+        res.status(500).json({ message: 'Erro ao reservar livro.' }); // Retorna erro genérico em caso de falha.
     }
 };
 
@@ -37,11 +37,10 @@ exports.getReservations = async (req, res) => {
             .populate('book')  // Preenche os detalhes do livro (ex.: título, ISBN).
             .populate('user'); // Preenche os detalhes do usuário (ex.: nome, CPF).
 
-        console.log('Reservas encontradas:', reservations); // Log das reservas encontradas.
         res.status(200).json(reservations); // Retorna as reservas encontradas.
     } catch (error) {
         console.error('Erro ao obter reservas:', error); // Log do erro.
-        res.status(500).json({ message: 'Erro ao obter reservas.', error }); // Retorna erro genérico em caso de falha.
+        res.status(500).json({ message: 'Erro ao obter reservas.' }); // Retorna erro genérico em caso de falha.
     }
 };
 
@@ -111,10 +110,9 @@ exports.getLoanHistory = async (req, res) => {
             .populate('book', 'title isbn') // Preenche informações do livro (ex.: título, ISBN).
             .populate('user', 'fullName cpf'); // Preenche informações do usuário (ex.: nome completo, CPF).
 
-        console.log('Histórico encontrado:', loanHistory); // Log do histórico encontrado.
         res.status(200).json(loanHistory); // Retorna o histórico de empréstimos.
     } catch (error) {
         console.error('Erro ao obter histórico de empréstimos:', error); // Log do erro.
-        res.status(500).json({ message: 'Erro ao obter histórico de empréstimos.', error }); // Retorna erro genérico em caso de falha.
+        res.status(500).json({ message: 'Erro ao obter histórico de empréstimos.' }); // Retorna erro genérico em caso de falha.
     }
 };
