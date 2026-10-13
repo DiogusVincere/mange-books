@@ -1,0 +1,24 @@
+# Dependências
+node_modules/
+
+# Variáveis de ambiente (nunca versionar)
+.env
+.env.*
+!.env.example
+
+# Saídas de build e cache
+.vite/
+dist/
+.vercel
+
+# Logs
+logs/
+*.log
+
+# Uploads feitos pelo app (a pasta fica, o conteúdo não)
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# Lixo de sistema operacional
+Thumbs.db
+.DS_Store

@@ -2,7 +2,6 @@ require('dotenv').config(); // Carrega as variáveis de ambiente do arquivo .env
 const express = require('express'); // Importa o módulo Express, usado para criar o servidor
 const mongoose = require('mongoose'); // Importa o módulo Mongoose, usado para interagir com o MongoDB
 const cors = require('cors'); // Importa o módulo CORS, utilizado para habilitar controle de acesso entre origens
-const bodyParser = require('body-parser'); // Importa o módulo Body-Parser, usado para analisar o corpo das requisições
 
 // Importação das rotas específicas de cada funcionalidade
 const books = require('./routes/books'); // Rota para lidar com livros
@@ -13,18 +12,19 @@ const reportsRoutes = require('./routes/reportsRoutes'); // Rota para relatório
 
 const app = express(); // Cria uma instância do servidor Express
 
-// Configura o CORS para permitir requisições da origem 'http://localhost:5173'
-// Define os métodos HTTP permitidos: GET, POST, PUT, DELETE
+// CORS: as origens autorizadas vêm da variável CORS_ORIGIN (separadas por vírgula).
+// Sem a variável, aceita só o front em desenvolvimento.
+const origensPermitidas = (process.env.CORS_ORIGIN || 'http://localhost:5173')
+    .split(',')
+    .map((origem) => origem.trim())
+    .filter(Boolean);
 app.use(cors({
-    origin: 'http://localhost:5173', // Permite acesso apenas de 'http://localhost:5173'
-    methods: ['GET', 'POST', 'PUT', 'DELETE'], // Define os métodos permitidos para as requisições
+    origin: origensPermitidas,
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
 }));
 
-app.use(bodyParser.json()); // Middleware para processar requisições com corpo no formato JSON
-app.use('/uploads', express.static('uploads')); // Serve arquivos estáticos (como imagens) do diretório 'uploads'
-
-// Middleware para processar requisições com corpo JSON
-app.use(express.json()); 
+app.use(express.json()); // Processa requisições com corpo JSON
+app.use('/uploads', express.static('uploads')); // Serve as capas enviadas pelo multer
 
 // Configura as rotas do servidor, associando os endpoints às rotas apropriadas
 app.use('/books', books); // Rota para livros
