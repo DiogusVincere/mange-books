@@ -11,15 +11,15 @@
     
     <div class="informacoes-barra">
       <div class="informacao">
-        <img src="./img/paginas-icon.png" alt="Páginas">
+        <img :src="iconePaginas" alt="Páginas">
         <span>{{ livro.pageCount }} páginas</span>
       </div>
       <div class="informacao">
-        <img src="./img/tipo-capa-icon.png" alt="Tipo de Capa">
+        <img :src="iconeTipoCapa" alt="Tipo de Capa">
         <span>{{ livro.coverType }}</span>
       </div>
       <div class="informacao">
-        <img src="./img/isbn-icon.png" alt="ISBN">
+        <img :src="iconeIsbn" alt="ISBN">
         <span>ISBN: {{ livro.isbn }}</span>
       </div>
     </div>
@@ -63,6 +63,10 @@
 </template>
 
 <script>
+import iconePaginas from '@/assets/img/livro.png';
+import iconeTipoCapa from '@/assets/img/livro-de-capa-dura.png';
+import iconeIsbn from '@/assets/img/codigo-de-barras.png';
+
 import axios from 'axios';
 
 export default {
@@ -70,6 +74,9 @@ export default {
   name: 'LivroSolo',
   data() {
     return {
+      iconePaginas,
+      iconeTipoCapa,
+      iconeIsbn,
       livro: { reviews: [], reservedBy: null }, // Objeto do livro, com avaliações e reserva
       newReview: {
         rating: 1,
