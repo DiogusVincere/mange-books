@@ -49,7 +49,7 @@
 </template>
 
 <script>
-import axios from "axios";
+import api from "@/api";
 
 export default {
   name: "Header",
@@ -67,11 +67,7 @@ export default {
       if (!token) return;
 
       try {
-        const response = await axios.get("/api/users/me", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const response = await api.get("/api/auth/me");
         this.username = response.data.username; // Define o nome do usuário
         this.isLoggedIn = true;
       } catch (error) {
@@ -102,7 +98,7 @@ export default {
       }
       
       try {
-        const response = await axios.get(`/books/search?q=${this.searchQuery}`);
+        const response = await api.get("/books/search", { params: { q: this.searchQuery } });
         this.searchResults = response.data.books || []; // Assegura que seja sempre um array
       } catch (error) {
         console.error("Erro ao buscar livros:", error);

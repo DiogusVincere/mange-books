@@ -1,20 +1,31 @@
-import axios from 'axios'; // Importa o módulo axios, utilizado para fazer requisições HTTP
+import axios from 'axios';
 
-// Cria uma instância do axios com uma configuração padrão
-const api = axios.create({
-  baseURL: 'http://localhost:5000/api/auth', // Define a URL base para as requisições de autenticação
-});
+// Endereço do back-end. Em desenvolvimento cai no localhost; em produção vem de
+// VITE_API_URL (frontend/.env). Sem barra no final.
+export const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/+$/, '');
 
-// Adicionando interceptor para incluir o token nas requisições
-api.interceptors.request.use((config) => { // Define um interceptor para as requisições antes delas serem enviadas
-  const token = localStorage.getItem('token'); // Pega o token armazenado no localStorage
-  console.log('Token enviado:', token); // Exibe o token no console para depuração
-  if (token) { // Verifica se o token existe
-    config.headers.Authorization = `Bearer ${token}`; // Adiciona o token no cabeçalho da requisição
-  }
-  return config; // Retorna a configuração da requisição com o token, se presente
-}, (error) => { // Se ocorrer algum erro na configuração da requisição
-  return Promise.reject(error); // Rejeita a Promise com o erro
-});
+// Instância única do axios usada por todos os componentes.
+const api = axios.create({ baseURL: API_URL });
 
-export default api; // Exporta a instância do axios para ser usada em outras partes da aplicação
+// Anexa o token JWT (se houver) em toda requisição.
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error),
+);
+
+// Monta a URL de uma imagem vinda da API: aceita o caminho relativo gravado pelo
+// multer ("uploads/arquivo.jpg", com barra ou contrabarra) ou uma URL completa
+// (capas do seed, que apontam para covers.openlibrary.org).
+export function urlImagem(caminho) {
+  if (!caminho) return '';
+  if (/^https?:\/\//i.test(caminho)) return caminho;
+  return `${API_URL}/${String(caminho).replace(/\\/g, '/').replace(/^\/+/, '')}`;
+}
+
+export default api;

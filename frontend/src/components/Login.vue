@@ -66,6 +66,8 @@
   </template>
   
   <script>
+  import api from "@/api";
+
   export default {
     name: "LoginPage",
     data() {
@@ -77,34 +79,19 @@
     methods: {
       async login() {
         try {
-          const response = await fetch("http://localhost:5000/api/auth/login", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-           },
-           body: JSON.stringify({
-              email: this.email,
-              password: this.password,
-           }),
-        });
-
-        if (!response.ok) {
-          const error = await response.json();
-          alert(error.message || "Erro ao realizar login.");
-          return;
+          const { data } = await api.post("/api/auth/login", {
+            email: this.email,
+            password: this.password,
+          });
+          localStorage.setItem("token", data.token); // Salva o token
+          alert("Login realizado com sucesso!");
+          // Volta para a página que pediu login, ou para a inicial
+          this.$router.push(this.$route.query.redirect || "/");
+        } catch (error) {
+          const mensagem = error.response?.data?.message || "Erro ao realizar login.";
+          alert(mensagem);
         }
-
-        const data = await response.json();
-        localStorage.setItem("token", data.token); // Salva o token
-        alert("Login realizado com sucesso!");
-        console.log("Token:", data.token);
-        // Redirecione para outra página após o login
-        this.$router.push("/");
-      } catch (error) {
-        console.error("Erro durante o login:", error);
-        alert("Ocorreu um erro inesperado.");
-      }
-    },
+      },
     register() {
       // Redirecionar para a página de cadastro
       this.$router.push("/register");

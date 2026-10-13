@@ -13,7 +13,7 @@
 </template>
 
 <script>
-import axios from 'axios';
+import api from '@/api';
 
 export default {
   data() {
@@ -29,7 +29,7 @@ export default {
       try {
         const token = localStorage.getItem('token'); // Acesse o token JWT do localStorage
         if (token) {
-          const response = await axios.get('http://localhost:5000/api/reservations/', {
+          const response = await api.get('/api/reservations/', {
             headers: {
               Authorization: `Bearer ${token}`,
             },

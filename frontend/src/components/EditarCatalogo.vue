@@ -23,7 +23,7 @@
           <div class="livro" v-for="livro in livros" :key="livro._id">
             <div class="livro-content">
               <router-link :to="{ name: 'livroSolo', params: { id: livro._id } }">
-                <img :src="`http://localhost:5000/${livro.coverImage}`" :alt="livro.title" />
+                <img :src="$imagem(livro.coverImage)" :alt="livro.title" />
                 <h4>{{ livro.title }}</h4>
                 <p>{{ livro.author }}</p>
               </router-link>
@@ -71,7 +71,7 @@
   
             <label for="coverImage">Capa do Livro:</label>
             <input type="file" @change="alterarCapaLivro" id="coverImage" />
-            <p v-if="livroSelecionado.coverImage">Imagem atual: <img :src="`http://localhost:5000/${livroSelecionado.coverImage}`" alt="Capa do livro" style="max-width: 100px; margin-top: 10px;" /></p>
+            <p v-if="livroSelecionado.coverImage">Imagem atual: <img :src="$imagem(livroSelecionado.coverImage)" alt="Capa do livro" style="max-width: 100px; margin-top: 10px;" /></p>
   
             <button type="submit">Salvar</button>
             <button type="button" @click="fecharFormularioEdicao">Cancelar</button>
@@ -82,7 +82,7 @@
   </template>
   
   <script>
-  import axios from "axios";
+  import api from "@/api";
   
   export default {
     name: "CatalogoLivros",
@@ -99,7 +99,7 @@
     methods: {
       async carregarLivros() {
         try {
-          const response = await axios.get("http://localhost:5000/books");
+          const response = await api.get("/books");
           this.todosLivros = response.data;
           this.livros = this.todosLivros;
         } catch (error) {
@@ -139,8 +139,7 @@
           formData.append("coverType", this.livroSelecionado.coverType);
           formData.append("isbn", this.livroSelecionado.isbn);
   
-          const response = await axios.put(
-            `http://localhost:5000/books/${this.livroSelecionado._id}`,
+          const response = await api.put(`/books/${this.livroSelecionado._id}`,
             formData,
             {
               headers: {
@@ -163,7 +162,7 @@
       },
       async deletarLivro(id) {
         try {
-          await axios.delete(`http://localhost:5000/books/${id}`);
+          await api.delete(`/books/${id}`);
           console.log("Livro deletado:", id);
           this.carregarLivros(); // Atualiza a lista de livros
         } catch (error) {

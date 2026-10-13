@@ -70,7 +70,7 @@
       <div v-if="isEditing && book.coverImage"> <!-- Condição para exibir a imagem atual se estiver editando e houver imagem -->
         <p>Imagem Atual:</p>
         <img
-          :src="`http://localhost:5000/${book.coverImage}`"
+          :src="$imagem(book.coverImage)"
           alt="Capa Atual do Livro"
           style="width: 100px; height: auto;"
         /> <!-- Exibe a imagem atual da capa -->
@@ -86,7 +86,7 @@
         <div v-for="book in recentBooks" :key="book._id" class="book-item"> <!-- Itera sobre os livros recentes -->
           <img
             v-if="book.coverImage"
-            :src="`http://localhost:5000/${book.coverImage}`"
+            :src="$imagem(book.coverImage)"
             alt="Capa do Livro"
             class="book-cover"
           /> <!-- Exibe a imagem da capa se existir -->
@@ -113,7 +113,7 @@
 </template>
 
 <script>
-import axios from "axios"; <!-- Importa o axios para fazer requisições HTTP -->
+import api from "@/api"; <!-- Importa o axios para fazer requisições HTTP -->
 
 export default {
   data() {
@@ -158,8 +158,7 @@ export default {
       try {
         if (this.isEditing) {
           // Atualiza livro existente
-          await axios.put(
-            `http://localhost:5000/books/${this.editingBookId}`,
+          await api.put(`/books/${this.editingBookId}`,
             formData,
             {
               headers: { "Content-Type": "multipart/form-data" },
@@ -168,7 +167,7 @@ export default {
           this.successMessage = "Livro atualizado com sucesso!"; <!-- Exibe mensagem de sucesso ao atualizar -->
         } else {
           // Adiciona novo livro
-          await axios.post("http://localhost:5000/books", formData, {
+          await api.post("/books", formData, {
             headers: { "Content-Type": "multipart/form-data" },
           });
           this.successMessage = "Livro cadastrado com sucesso!"; <!-- Exibe mensagem de sucesso ao cadastrar -->
@@ -181,7 +180,7 @@ export default {
     },
     async fetchRecentBooks() { <!-- Função para buscar livros recentes -->
       try {
-        const response = await axios.get("http://localhost:5000/books/recent");
+        const response = await api.get("/books/recent");
         this.recentBooks = response.data; <!-- Atualiza a lista de livros recentes -->
       } catch (error) {
         console.error("Erro ao buscar livros recentes:", error); <!-- Log de erro -->
@@ -189,7 +188,7 @@ export default {
     },
     async deleteBook(bookId) { <!-- Função para deletar um livro -->
       try {
-        await axios.delete(`http://localhost:5000/books/${bookId}`);
+        await api.delete(`/books/${bookId}`);
         this.fetchRecentBooks(); <!-- Atualiza a lista de livros após deleção -->
       } catch (error) {
         console.error("Erro ao deletar livro:", error); <!-- Log de erro -->

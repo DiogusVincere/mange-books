@@ -90,7 +90,7 @@
 </template>
 
 <script>
-import axios from "axios";
+import api from "@/api";
 
 export default {
   data() {
@@ -118,7 +118,7 @@ export default {
   methods: {
     fetchUserDetails() {
       const userId = this.$route.params.id;
-      axios.get(`http://localhost:5000/api/auth/${userId}`)
+      api.get(`/api/auth/${userId}`)
         .then((response) => {
           this.user = response.data;
           this.populateEditForm();
@@ -134,7 +134,7 @@ export default {
     },
     updateUser() {
       const userId = this.$route.params.id;
-      axios.put(`http://localhost:5000/api/auth/${userId}`, this.editForm)
+      api.put(`/api/auth/${userId}`, this.editForm)
         .then(() => {
           this.fetchUserDetails();
           this.showEditForm = false;
@@ -147,7 +147,7 @@ export default {
     deleteUser() {
       const userId = this.$route.params.id;
       if (confirm("Tem certeza que deseja excluir este usuário?")) {
-        axios.delete(`http://localhost:5000/api/auth/${userId}`)
+        api.delete(`/api/auth/${userId}`)
           .then(() => {
             alert("Usuário excluído com sucesso!");
             this.$router.push("/users");

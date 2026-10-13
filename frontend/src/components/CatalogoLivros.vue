@@ -33,7 +33,7 @@
             <!-- Link para a página de detalhes do livro -->
             <router-link :to="{ name: 'livroSolo', params: { id: livro._id } }">
               <!-- Exibe a capa do livro -->
-              <img :src="`http://localhost:5000/${livro.coverImage}`" :alt="livro.title" />
+              <img :src="$imagem(livro.coverImage)" :alt="livro.title" />
               <!-- Exibe o título do livro -->
               <h4>{{ livro.title }}</h4>
               <!-- Exibe o autor do livro -->
@@ -47,7 +47,7 @@
 </template>
 
 <script>
-import axios from "axios";  // Importa o Axios para fazer requisições HTTP
+import api from "@/api";  // Importa o Axios para fazer requisições HTTP
 
 export default {
   name: "CatalogoLivros",  // Nome do componente
@@ -64,7 +64,7 @@ export default {
     async carregarLivros() {
       try {
         // Faz a requisição GET para a API para obter os livros
-        const response = await axios.get("http://localhost:5000/books");
+        const response = await api.get("/books");
         this.todosLivros = response.data;  // Armazena todos os livros
         this.livros = this.todosLivros;  // Inicializa a lista de livros com todos os livros
       } catch (error) {

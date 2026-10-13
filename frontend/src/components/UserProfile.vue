@@ -50,7 +50,7 @@ export default {
   methods: {
     async carregarPerfil() {
       try {
-        const response = await api.get('/me');
+        const response = await api.get('/api/auth/me');
         this.userProfile = response.data;
         console.log('Perfil carregado:', this.userProfile);
       } catch (error) {

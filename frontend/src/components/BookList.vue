@@ -15,7 +15,7 @@
       <!-- Itera sobre cada livro e exibe as informações -->
       <div v-for="book in books" :key="book._id" class="book-item">
         <!-- Exibe a capa do livro se existir -->
-        <img v-if="book.coverImage" :src="`http://localhost:5000/${book.coverImage}`" alt="Capa do Livro" class="book-cover" />
+        <img v-if="book.coverImage" :src="$imagem(book.coverImage)" alt="Capa do Livro" class="book-cover" />
         
         <!-- Detalhes do livro, incluindo título, autor, ano, gênero, etc. -->
         <div class="book-details">
@@ -36,7 +36,7 @@
 </template>
 
 <script>
-import axios from 'axios'; // Importa a biblioteca axios para fazer requisições HTTP
+import api from '@/api'; // Importa a biblioteca axios para fazer requisições HTTP
 
 export default {
   data() {
@@ -55,7 +55,7 @@ export default {
     // Método assíncrono para buscar os livros da API
     async fetchBooks() {
       try {
-        const response = await axios.get('http://localhost:5000/books'); // Faz a requisição GET para a API
+        const response = await api.get('/books'); // Faz a requisição GET para a API
         this.books = response.data; // Armazena os livros recebidos na variável books
       } catch (error) {
         this.errorMessage = 'Erro ao carregar os livros. Tente novamente.'; // Exibe mensagem de erro em caso de falha

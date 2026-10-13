@@ -24,7 +24,7 @@
 </template>
 
 <script>
-import axios from "axios";
+import api from "@/api";
 
 export default {
   data() {
@@ -47,7 +47,7 @@ export default {
   },
   methods: {
     fetchUsers() {
-      axios.get("http://localhost:5000/api/auth")
+      api.get("/api/auth")
         .then((response) => {
           this.users = response.data;
         })

@@ -27,6 +27,8 @@
 </template>
 
 <script>
+import api from "@/api";
+
 export default {
   data() {
     return {
@@ -39,16 +41,8 @@ export default {
   methods: {
     async fetchUserData() {
       try {
-        // Simulação de uma chamada ao backend para obter o nome do usuário
-        const response = await fetch("http://localhost:5000/api/auth", {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`, // Adiciona o token na requisição
-          },
-        });
-
-        if (!response.ok) throw new Error("Erro ao carregar os dados do usuário");
-
-        const data = await response.json();
+        // Perfil do usuário logado (o token vai no interceptor da instância api)
+        const { data } = await api.get("/api/auth/me");
         this.username = data.username || "Usuário"; // Atualiza o nome do usuário
       } catch (error) {
         console.error(error);

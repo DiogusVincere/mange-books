@@ -1,7 +1,7 @@
 <template>
   <div class="livro-solo">
     <div class="livro">
-      <img :src="`http://localhost:5000/${livro.coverImage}`" :alt="livro.title" class="capa-livro">
+      <img :src="$imagem(livro.coverImage)" :alt="livro.title" class="capa-livro">
       <div class="detalhes">
         <h2>{{ livro.title }}</h2>
         <p>Autor: {{ livro.author }}</p>
@@ -35,7 +35,7 @@
       <div class="avaliacoes">
         <div v-for="avaliacao in livro.reviews" :key="avaliacao._id" class="avaliacao">
           <div class="usuario">
-            <img :src="`http://localhost:5000/${avaliacao.userProfileImage}`" alt="Usuário" class="foto-perfil">
+            <img :src="$imagem(avaliacao.userProfileImage)" alt="Usuário" class="foto-perfil">
             <span class="nome-usuario">{{ avaliacao.userName }}</span>
           </div>
           <div class="estrelas">
@@ -67,7 +67,7 @@ import iconePaginas from '@/assets/img/livro.png';
 import iconeTipoCapa from '@/assets/img/livro-de-capa-dura.png';
 import iconeIsbn from '@/assets/img/codigo-de-barras.png';
 
-import axios from 'axios';
+import api from '@/api';
 
 export default {
   props:['id'], // Recebe o ID do livro pela rota
@@ -89,7 +89,7 @@ export default {
     // Obter o ID do livro da URL
     const livroId = this.$route.params.id;
     try {
-      const response = await axios.get(`http://localhost:5000/books/${livroId}`);
+      const response = await api.get(`/books/${livroId}`);
       this.livro = response.data;
     } catch (error) {
       console.error('Erro ao carregar os dados do livro:', error);
@@ -103,7 +103,7 @@ export default {
   methods: {
     async fetchBookReviews() {
       try {
-        const response = await axios.get(`http://localhost:5000/books/${this.$route.params.id}`);
+        const response = await api.get(`/books/${this.$route.params.id}`);
         this.livro = response.data;
       } catch (error) {
         console.error('Erro ao carregar avaliações:', error);
@@ -111,8 +111,7 @@ export default {
     },
     async submitReview() {
       try {
-        const response = await axios.post(
-          'http://localhost:5000/reviews/addReview',
+        const response = await api.post('/reviews/create',
           {
             bookId: this.livro._id,
             rating: this.newReview.rating,
@@ -138,8 +137,7 @@ export default {
       }
 
       try {
-        const response = await axios.post(
-          `http://localhost:5000/api/reservations/reserve`,
+        const response = await api.post(`/api/reservations/reserve`,
           { bookId: this.livro._id }, // Envia o ID no corpo da requisição
           {
             headers: {

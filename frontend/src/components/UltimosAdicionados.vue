@@ -11,7 +11,7 @@
           <div v-for="(book, index) in visibleBooks" :key="book._id">
             <router-link v-if="book._id" :to="{ name: 'livroSolo', params: { id: book._id } }">
               <div class="livro-slot">
-                <img v-if="book.coverImage" :src="`http://localhost:5000/${book.coverImage}`" :alt="book.title" class="livro-capa" />
+                <img v-if="book.coverImage" :src="$imagem(book.coverImage)" :alt="book.title" class="livro-capa" />
                 <p>{{ book.title }}</p>
                 <p>{{ book.author }}</p>
               </div>
@@ -28,7 +28,7 @@
 </template>
 
 <script>
-import axios from "axios";
+import api from "@/api";
 
 export default {
   data() {
@@ -57,7 +57,7 @@ export default {
   methods: {
     async fetchBooks() {
       try {
-        const response = await axios.get("http://localhost:5000/books");
+        const response = await api.get("/books");
         this.books = response.data;
       } catch (error) {
         this.errorMessage = "Erro ao carregar os livros. Tente novamente.";

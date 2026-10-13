@@ -61,7 +61,7 @@
 
 <script>
 // Importa a biblioteca axios para fazer requisições HTTP
-import axios from 'axios';
+import api from '@/api';
 
 export default {
   data() {
@@ -73,7 +73,7 @@ export default {
     // Método para buscar as reservas e empréstimos da API
     async fetchReservations() {
       try {
-        const response = await axios.get('http://localhost:5000/api/reservations/', {
+        const response = await api.get('/api/reservations/', {
           headers: {
             Authorization: `Bearer ${localStorage.getItem('token')}`, // Adiciona o token de autenticação
           },
@@ -88,8 +88,7 @@ export default {
     // Método para emprestar um livro
     async loanBook(reservationId) {
       try {
-        await axios.post(
-          'http://localhost:5000/api/reservations/loan',
+        await api.post('/api/reservations/loan',
           { reservationId },
           {
             headers: {
@@ -107,8 +106,7 @@ export default {
     // Método para devolver um livro
     async returnBook(reservationId) {
       try {
-        await axios.post(
-          'http://localhost:5000/api/reservations/return',
+        await api.post('/api/reservations/return',
           { reservationId },
           {
             headers: {

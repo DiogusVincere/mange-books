@@ -1,12 +1,15 @@
-import { createApp } from 'vue';  // Importe o Vue 3
+import { createApp } from 'vue';
 import App from './App.vue';
-import router from './router';  // Importe o router
+import router from './router';
+import { urlImagem } from './api';
 
-// Importe fontes no arquivo CSS global
-import './assets/fonts.css'; // Crie este arquivo para importar as fontes
+import './assets/fonts.css';
 
 const app = createApp(App);
 
-app.use(router);  // Adicione o Vue Router ao Vue
+app.use(router);
 
-app.mount('#app');  // Monte o aplicativo
+// Disponível em qualquer template como $imagem(caminho).
+app.config.globalProperties.$imagem = urlImagem;
+
+app.mount('#app');

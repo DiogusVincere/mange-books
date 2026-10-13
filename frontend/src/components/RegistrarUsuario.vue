@@ -115,6 +115,7 @@
 
 <script>
 import axios from "axios";
+import api from "@/api";
 
 export default {
   data() {
@@ -192,7 +193,7 @@ export default {
       };
 
       try {
-          const response = await axios.post("http://localhost:5000/api/auth/register", formData, {
+          const response = await api.post("/api/auth/register", formData, {
               headers: {
                   "Content-Type": "application/json",
               },
