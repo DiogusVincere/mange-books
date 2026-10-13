@@ -1,5 +1,6 @@
 // Popula o banco com um usuário de demonstração e seis livros de exemplo.
-// Uso: npm run seed   (precisa de MONGO_URI no backend/.env)
+// Uso: npm run seed (precisa de MONGO_URI no backend/.env). O server.js também chama
+// seed() sozinho quando sobe em modo demonstração (sem MONGO_URI).
 // Pode rodar quantas vezes quiser: o que já existe (mesmo e-mail / mesmo ISBN) é pulado.
 require('dotenv').config();
 const mongoose = require('mongoose');
@@ -93,15 +94,8 @@ const LIVROS = [
     },
 ];
 
+// Popula o banco já conectado (quem chama é responsável pelo mongoose.connect).
 async function main() {
-    if (!process.env.MONGO_URI) {
-        console.error('Defina MONGO_URI no backend/.env antes de rodar o seed.');
-        process.exit(1);
-    }
-
-    await mongoose.connect(process.env.MONGO_URI);
-    console.log('Conectado ao MongoDB.');
-
     // Usuário de demonstração
     const usuarioExistente = await User.findOne({ email: USUARIO_DEMO.email });
     if (usuarioExistente) {
@@ -127,9 +121,19 @@ async function main() {
     console.log(`Pronto: ${criados} livro(s) novo(s).`);
 }
 
-main()
-    .catch((error) => {
-        console.error('Erro no seed:', error.message);
-        process.exitCode = 1;
-    })
-    .finally(() => mongoose.disconnect());
+module.exports = { seed: main, USUARIO_DEMO };
+
+// Executado direto (npm run seed): conecta, popula e desconecta.
+if (require.main === module) {
+    if (!process.env.MONGO_URI) {
+        console.error('Defina MONGO_URI no backend/.env para rodar o seed contra um MongoDB.');
+        process.exit(1);
+    }
+    mongoose.connect(process.env.MONGO_URI)
+        .then(() => { console.log('Conectado ao MongoDB.'); return main(); })
+        .catch((error) => {
+            console.error('Erro no seed:', error.message);
+            process.exitCode = 1;
+        })
+        .finally(() => mongoose.disconnect());
+}

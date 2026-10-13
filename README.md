@@ -117,6 +117,14 @@ Back no **Render** e front na **Vercel**. O back grava capas em disco (`uploads/
 - **Render** (`render.yaml` na raiz): *New > Blueprint*, apontar para este repositório e preencher `MONGO_URI`, `JWT_SECRET` e `CORS_ORIGIN` (a URL do front na Vercel; várias origens separadas por vírgula). No plano gratuito o disco é efêmero: as capas enviadas somem a cada deploy. Para persistir, use um disco do Render (bloco comentado no `render.yaml`) ou troque o armazenamento por um serviço externo.
 - **Vercel** (`frontend/vercel.json`): importar o repositório com *Root Directory* = `frontend` e definir `VITE_API_URL` com a URL do serviço do Render. O rewrite para `index.html` atende ao vue-router em modo history.
 
+## Modo demonstração (sem MongoDB)
+
+Sem `MONGO_URI`, o `server.js` sobe um **MongoDB embutido no próprio processo**
+(`mongodb-memory-server`), roda o seed e gera um `JWT_SECRET` temporário. É o modo da demo
+pública: o serviço gratuito reinicia de tempos em tempos e volta sempre com o usuário
+`demo@demo.com` / `demo1234` e os seis livros de exemplo. Tudo o que for cadastrado some no
+reinício. Com um Atlas ou Mongo local, basta definir `MONGO_URI` que o modo normal assume.
+
 ## Demonstração
 
 <!-- a publicar -->

@@ -13,12 +13,15 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "20"
-      - key: MONGO_URI
-        sync: false
+      # Sem MONGO_URI o servidor sobe em modo demonstração: MongoDB embutido no
+      # processo (mongodb-memory-server) + seed a cada subida. Para usar um Mongo de
+      # verdade, acrescente MONGO_URI no painel do Render.
+      - key: MONGOMS_VERSION
+        value: "7.0.14"
       - key: JWT_SECRET
-        sync: false
+        generateValue: true
       - key: CORS_ORIGIN
-        sync: false # ex.: https://mange-books.vercel.app,http://localhost:5173
+        value: https://mange-books.vercel.app,https://diogusvincere.github.io,http://localhost:5173
     # Atenção: no plano free o disco é efêmero — as capas enviadas pelo multer somem a cada
     # deploy/reinício. Em plano pago, descomente para persistir backend/uploads:
     # disk:
