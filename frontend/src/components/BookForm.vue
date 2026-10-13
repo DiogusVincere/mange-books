@@ -113,12 +113,12 @@
 </template>
 
 <script>
-import api from "@/api"; <!-- Importa o axios para fazer requisições HTTP -->
+import api from "@/api"; /* Importa o axios para fazer requisições HTTP */
 
 export default {
   data() {
     return {
-      book: { <!-- Dados do livro -->
+      book: { /* Dados do livro */
         title: "",
         author: "",
         year: "",
@@ -129,30 +129,30 @@ export default {
         isbn: "",
         coverImage: "",
       },
-      coverImageFile: null, <!-- Arquivo de imagem da capa -->
-      recentBooks: [], <!-- Lista de livros recentes -->
-      errorMessage: null, <!-- Mensagem de erro -->
-      successMessage: null, <!-- Mensagem de sucesso -->
-      isEditing: false, <!-- Indicador se está editando um livro -->
-      editingBookId: null, <!-- ID do livro sendo editado -->
+      coverImageFile: null, /* Arquivo de imagem da capa */
+      recentBooks: [], /* Lista de livros recentes */
+      errorMessage: null, /* Mensagem de erro */
+      successMessage: null, /* Mensagem de sucesso */
+      isEditing: false, /* Indicador se está editando um livro */
+      editingBookId: null, /* ID do livro sendo editado */
     };
   },
   methods: {
     handleFileChange(event) {
-      this.coverImageFile = event.target.files[0]; <!-- Atualiza o arquivo da capa -->
+      this.coverImageFile = event.target.files[0]; /* Atualiza o arquivo da capa */
     },
-    async submitBook() { <!-- Função para submeter o livro -->
-      const formData = new FormData(); <!-- Cria um FormData para enviar o livro -->
-      formData.append("title", this.book.title); <!-- Adiciona o título -->
-      formData.append("author", this.book.author); <!-- Adiciona o autor -->
-      formData.append("description", this.book.description); <!-- Adiciona a descrição -->
-      formData.append("year", this.book.year); <!-- Adiciona o ano -->
-      formData.append("genre", this.book.genre); <!-- Adiciona o gênero -->
-      formData.append("pageCount", this.book.pageCount); <!-- Adiciona o número de páginas -->
-      formData.append("coverType", this.book.coverType); <!-- Adiciona o tipo de capa -->
-      formData.append("isbn", this.book.isbn); <!-- Adiciona o ISBN -->
+    async submitBook() { /* Função para submeter o livro */
+      const formData = new FormData(); /* Cria um FormData para enviar o livro */
+      formData.append("title", this.book.title); /* Adiciona o título */
+      formData.append("author", this.book.author); /* Adiciona o autor */
+      formData.append("description", this.book.description); /* Adiciona a descrição */
+      formData.append("year", this.book.year); /* Adiciona o ano */
+      formData.append("genre", this.book.genre); /* Adiciona o gênero */
+      formData.append("pageCount", this.book.pageCount); /* Adiciona o número de páginas */
+      formData.append("coverType", this.book.coverType); /* Adiciona o tipo de capa */
+      formData.append("isbn", this.book.isbn); /* Adiciona o ISBN */
       if (this.coverImageFile) {
-        formData.append("coverImage", this.coverImageFile); <!-- Adiciona a imagem da capa, se presente -->
+        formData.append("coverImage", this.coverImageFile); /* Adiciona a imagem da capa, se presente */
       }
 
       try {
@@ -164,42 +164,42 @@ export default {
               headers: { "Content-Type": "multipart/form-data" },
             }
           );
-          this.successMessage = "Livro atualizado com sucesso!"; <!-- Exibe mensagem de sucesso ao atualizar -->
+          this.successMessage = "Livro atualizado com sucesso!"; /* Exibe mensagem de sucesso ao atualizar */
         } else {
           // Adiciona novo livro
           await api.post("/books", formData, {
             headers: { "Content-Type": "multipart/form-data" },
           });
-          this.successMessage = "Livro cadastrado com sucesso!"; <!-- Exibe mensagem de sucesso ao cadastrar -->
+          this.successMessage = "Livro cadastrado com sucesso!"; /* Exibe mensagem de sucesso ao cadastrar */
         }
-        this.resetForm(); <!-- Reseta o formulário -->
-        this.fetchRecentBooks(); <!-- Atualiza a lista de livros recentes -->
+        this.resetForm(); /* Reseta o formulário */
+        this.fetchRecentBooks(); /* Atualiza a lista de livros recentes */
       } catch (error) {
-        this.errorMessage = "Erro ao salvar o livro. Tente novamente."; <!-- Exibe mensagem de erro -->
+        this.errorMessage = "Erro ao salvar o livro. Tente novamente."; /* Exibe mensagem de erro */
       }
     },
-    async fetchRecentBooks() { <!-- Função para buscar livros recentes -->
+    async fetchRecentBooks() { /* Função para buscar livros recentes */
       try {
         const response = await api.get("/books/recent");
-        this.recentBooks = response.data; <!-- Atualiza a lista de livros recentes -->
+        this.recentBooks = response.data; /* Atualiza a lista de livros recentes */
       } catch (error) {
-        console.error("Erro ao buscar livros recentes:", error); <!-- Log de erro -->
+        console.error("Erro ao buscar livros recentes:", error); /* Log de erro */
       }
     },
-    async deleteBook(bookId) { <!-- Função para deletar um livro -->
+    async deleteBook(bookId) { /* Função para deletar um livro */
       try {
         await api.delete(`/books/${bookId}`);
-        this.fetchRecentBooks(); <!-- Atualiza a lista de livros após deleção -->
+        this.fetchRecentBooks(); /* Atualiza a lista de livros após deleção */
       } catch (error) {
-        console.error("Erro ao deletar livro:", error); <!-- Log de erro -->
+        console.error("Erro ao deletar livro:", error); /* Log de erro */
       }
     },
-    editBook(book) { <!-- Função para editar um livro -->
-      this.isEditing = true; <!-- Marca como edição -->
-      this.editingBookId = book._id; <!-- Armazena o ID do livro sendo editado -->
-      this.book = { ...book }; <!-- Preenche o formulário com os dados do livro -->
+    editBook(book) { /* Função para editar um livro */
+      this.isEditing = true; /* Marca como edição */
+      this.editingBookId = book._id; /* Armazena o ID do livro sendo editado */
+      this.book = { ...book }; /* Preenche o formulário com os dados do livro */
     },
-    resetForm() { <!-- Função para resetar o formulário -->
+    resetForm() { /* Função para resetar o formulário */
       this.book = {
         title: "",
         author: "",
@@ -211,13 +211,13 @@ export default {
         isbn: "",
         coverImage: "",
       };
-      this.coverImageFile = null; <!-- Limpa a imagem da capa -->
-      this.isEditing = false; <!-- Marca como não edição -->
-      this.editingBookId = null; <!-- Limpa o ID do livro sendo editado -->
+      this.coverImageFile = null; /* Limpa a imagem da capa */
+      this.isEditing = false; /* Marca como não edição */
+      this.editingBookId = null; /* Limpa o ID do livro sendo editado */
     },
   },
   mounted() {
-    this.fetchRecentBooks(); <!-- Busca os livros recentes quando o componente é montado -->
+    this.fetchRecentBooks(); /* Busca os livros recentes quando o componente é montado */
   },
 };
 </script>
