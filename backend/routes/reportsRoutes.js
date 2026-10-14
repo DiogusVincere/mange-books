@@ -1,54 +1,98 @@
-const express = require('express'); // Importa o módulo Express
-const router = express.Router(); // Cria um roteador do Express para gerenciar as rotas
-const Book = require('../models/Book'); // Importa o modelo Book, que representa os livros no banco de dados
-const User = require('../models/user'); // Importa o modelo User, que representa os usuários no banco de dados
-const { authMiddleware } = require('../middleware/auth'); // Relatórios só para quem está logado
+// Relatórios (só bibliotecários), calculados sobre os dados reais.
+const express = require('express');
+const router = express.Router();
+const Book = require('../models/Book');
+const User = require('../models/user');
+const Reservation = require('../models/Reservation');
+const Review = require('../models/Review');
+const { authMiddleware, somenteBibliotecario } = require('../middleware/auth');
 
-router.use(authMiddleware);
+router.use(authMiddleware, somenteBibliotecario);
 
-// Rota para retornar livros mais reservados
-router.get('/books', async (req, res) => { // Define uma rota GET para buscar os livros mais reservados
-  try {
-    // Realiza uma agregação no MongoDB para contar o número de reservas por título de livro
-    const books = await Book.aggregate([
-      { $group: { _id: '$title', count: { $sum: 1 } } }, // Agrupa os livros por título e conta as ocorrências
-      { $sort: { count: -1 } }, // Ordena os livros pelo número de reservas em ordem decrescente
-      { $limit: 10 }, // Limita o resultado aos 10 livros mais reservados
-    ]);
-    // Retorna os 10 livros mais reservados no formato desejado
-    res.status(200).json(books.map(book => ({ name: book._id, count: book.count })));
-  } catch (error) { // Em caso de erro
-    res.status(500).json({ message: error.message }); // Retorna um erro com a mensagem do erro
-  }
+const erro = (res, error, mensagem) => {
+    console.error(mensagem + ':', error);
+    res.status(500).json({ message: mensagem });
+};
+
+// Números gerais para os cartões do painel
+router.get('/resumo', async (req, res) => {
+    try {
+        const [livros, usuarios, reservadas, emprestados, devolvidos, avaliacoes, media, porGenero] = await Promise.all([
+            Book.countDocuments(),
+            User.countDocuments(),
+            Reservation.countDocuments({ status: 'Reservado' }),
+            Reservation.countDocuments({ status: 'Emprestado' }),
+            Reservation.countDocuments({ status: 'Devolvido' }),
+            Review.countDocuments(),
+            Review.aggregate([{ $group: { _id: null, media: { $avg: '$rating' } } }]),
+            Book.aggregate([{ $group: { _id: '$genre', total: { $sum: 1 } } }, { $sort: { total: -1, _id: 1 } }]),
+        ]);
+        res.status(200).json({
+            livros,
+            usuarios,
+            reservasAtivas: reservadas,
+            emprestimosAtivos: emprestados,
+            devolucoes: devolvidos,
+            avaliacoes,
+            notaMediaGeral: media[0] ? Math.round(media[0].media * 10) / 10 : null,
+            porGenero: porGenero.map((g) => ({ name: g._id, count: g.total })),
+        });
+    } catch (error) {
+        erro(res, error, 'Erro ao montar o resumo');
+    }
 });
 
-// Rota para retornar usuários mais ativos
-router.get('/users', async (req, res) => { // Define uma rota GET para buscar os usuários mais ativos
-  try {
-    // Realiza uma agregação no MongoDB para contar o número de ações (como reservas) por usuário
-    const users = await User.aggregate([
-      { $group: { _id: '$username', count: { $sum: 1 } } }, // Agrupa os usuários por nome e conta as ocorrências
-      { $sort: { count: -1 } }, // Ordena os usuários pelo número de ações em ordem decrescente
-      { $limit: 10 }, // Limita o resultado aos 10 usuários mais ativos
-    ]);
-    // Retorna os 10 usuários mais ativos no formato desejado
-    res.status(200).json(users.map(user => ({ name: user._id, count: user.count })));
-  } catch (error) { // Em caso de erro
-    res.status(500).json({ message: error.message }); // Retorna um erro com a mensagem do erro
-  }
+// Livros mais reservados (reservas canceladas não contam)
+router.get('/books', async (req, res) => {
+    try {
+        const dados = await Reservation.aggregate([
+            { $match: { status: { $ne: 'Cancelado' } } },
+            { $group: { _id: '$book', count: { $sum: 1 } } },
+            { $sort: { count: -1 } },
+            { $limit: 10 },
+            { $lookup: { from: 'books', localField: '_id', foreignField: '_id', as: 'livro' } },
+            { $unwind: '$livro' },
+            { $project: { _id: 0, id: '$_id', name: '$livro.title', author: '$livro.author', count: 1 } },
+        ]);
+        res.status(200).json(dados);
+    } catch (error) {
+        erro(res, error, 'Erro ao calcular livros mais reservados');
+    }
 });
 
-// Rota para retornar livros com melhores avaliações
-router.get('/ratings', async (req, res) => { // Define uma rota GET para buscar livros com melhores avaliações
-  try {
-    // Lógica de exemplo que retorna livros com avaliações fictícias (a ser implementada posteriormente)
-    res.status(200).json([ // Retorna os livros com as melhores avaliações
-      { name: 'Livro A', count: 5 }, // Exemplo de livro com nota 5
-      { name: 'Livro B', count: 4.8 }, // Exemplo de livro com nota 4.8
-    ]);
-  } catch (error) { // Em caso de erro
-    res.status(500).json({ message: error.message }); // Retorna um erro com a mensagem do erro
-  }
+// Leitores mais ativos (por reservas não canceladas)
+router.get('/users', async (req, res) => {
+    try {
+        const dados = await Reservation.aggregate([
+            { $match: { status: { $ne: 'Cancelado' } } },
+            { $group: { _id: '$user', count: { $sum: 1 } } },
+            { $sort: { count: -1 } },
+            { $limit: 10 },
+            { $lookup: { from: 'users', localField: '_id', foreignField: '_id', as: 'usuario' } },
+            { $unwind: '$usuario' },
+            { $project: { _id: 0, id: '$_id', name: '$usuario.fullName', count: 1 } },
+        ]);
+        res.status(200).json(dados);
+    } catch (error) {
+        erro(res, error, 'Erro ao calcular leitores mais ativos');
+    }
 });
 
-module.exports = router; // Exporta o roteador para que possa ser usado em outros arquivos
+// Livros mais bem avaliados (count = nota média; total = quantidade de avaliações)
+router.get('/ratings', async (req, res) => {
+    try {
+        const dados = await Review.aggregate([
+            { $group: { _id: '$bookId', media: { $avg: '$rating' }, total: { $sum: 1 } } },
+            { $sort: { media: -1, total: -1 } },
+            { $limit: 10 },
+            { $lookup: { from: 'books', localField: '_id', foreignField: '_id', as: 'livro' } },
+            { $unwind: '$livro' },
+            { $project: { _id: 0, id: '$_id', name: '$livro.title', author: '$livro.author', count: { $round: ['$media', 1] }, total: 1 } },
+        ]);
+        res.status(200).json(dados);
+    } catch (error) {
+        erro(res, error, 'Erro ao calcular avaliações');
+    }
+});
+
+module.exports = router;

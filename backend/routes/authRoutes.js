@@ -1,17 +1,21 @@
 const express = require('express');
 const router = express.Router();
-const authController = require('../controllers/authController');
-const { authMiddleware } = require('../middleware/auth');
+const c = require('../controllers/authController');
+const { authMiddleware, comPapel, somenteBibliotecario } = require('../middleware/auth');
 
-// Abertas: cadastro e login
-router.post('/register', authController.register);
-router.post('/login', authController.login);
+// Abertas
+router.post('/register', c.register);
+router.post('/login', c.login);
 
-// Protegidas: perfil do logado e CRUD de usuários
-router.get('/me', authMiddleware, authController.getUserProfile);
-router.get('/', authMiddleware, authController.getAllUsers);
-router.get('/:id', authMiddleware, authController.getUserById);
-router.put('/:id', authMiddleware, authController.updateUser);
-router.delete('/:id', authMiddleware, authController.deleteUser);
+// Do próprio usuário logado
+router.get('/me', authMiddleware, c.getUserProfile);
+router.put('/me/senha', authMiddleware, c.trocarSenha);
+
+// Gestão de usuários: lista e exclusão só para bibliotecários; ver/editar vale
+// para o bibliotecário ou para o próprio usuário (a checagem está no controller).
+router.get('/', authMiddleware, somenteBibliotecario, c.getAllUsers);
+router.get('/:id', authMiddleware, comPapel, c.getUserById);
+router.put('/:id', authMiddleware, comPapel, c.updateUser);
+router.delete('/:id', authMiddleware, somenteBibliotecario, c.deleteUser);
 
 module.exports = router;

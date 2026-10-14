@@ -1,182 +1,306 @@
-const express = require('express'); // Importa o módulo express, que facilita a criação e gestão de rotas.
-const Book = require('../models/Book'); // Importa o modelo Book, que representa a estrutura de dados de um livro no banco de dados.
-const router = express.Router(); // Cria um roteador para definir as rotas do aplicativo.
-const multer = require('multer'); // Importa o multer para lidar com upload de arquivos.
-const fs = require('fs'); // Importa o módulo 'fs' para manipulação de arquivos no sistema de arquivos.
-const path = require('path'); // Importa o módulo 'path' para trabalhar com caminhos de arquivos no sistema.
-const { authMiddleware } = require('../middleware/auth'); // Exige login para criar, alterar e excluir livros.
+const express = require('express');
+const multer = require('multer');
+const fs = require('fs');
+const path = require('path');
+const mongoose = require('mongoose');
+const Book = require('../models/Book');
+const Review = require('../models/Review');
+const Reservation = require('../models/Reservation');
+const { authMiddleware, authOpcional, somenteBibliotecario } = require('../middleware/auth');
 
-// Pasta de uploads sempre relativa a este arquivo, não ao diretório de onde o node foi chamado.
+const router = express.Router();
+
+// ---- Upload de capa -------------------------------------------------------
+// Pasta sempre relativa a este arquivo, não ao diretório de onde o node foi chamado.
 const PASTA_UPLOADS = path.join(__dirname, '..', 'uploads');
 
-// Configuração do multer para upload de arquivos
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, PASTA_UPLOADS); // Define o diretório onde os arquivos serão armazenados no servidor.
+        fs.mkdirSync(PASTA_UPLOADS, { recursive: true });
+        cb(null, PASTA_UPLOADS);
     },
     filename: (req, file, cb) => {
-        cb(null, Date.now() + '-' + file.originalname); // Gera um nome único para o arquivo, incluindo a data e hora atual.
-    }
+        const extensao = path.extname(file.originalname).toLowerCase() || '.jpg';
+        cb(null, `${Date.now()}-${Math.round(Math.random() * 1e6)}${extensao}`);
+    },
 });
 const upload = multer({
-    storage, // Usa a configuração de armazenamento definida acima.
-    limits: { fileSize: 2 * 1024 * 1024 } // Define o limite de tamanho de arquivo para 2MB.
+    storage,
+    limits: { fileSize: 2 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+        if (/^image\/(jpeg|png|webp|gif)$/.test(file.mimetype)) return cb(null, true);
+        const erro = new Error('Envie uma imagem JPG, PNG, WebP ou GIF');
+        erro.status = 400;
+        cb(erro);
+    },
 });
 
-// Caminho gravado no banco: sempre com barra normal ("uploads/arquivo.jpg"), mesmo no Windows.
+// Caminho gravado no banco: sempre com barra normal, mesmo no Windows.
 const caminhoDaCapa = (file) => `uploads/${file.filename}`;
+const ehUrl = (texto) => /^https?:\/\//i.test(String(texto || ''));
 
-// Apaga a capa do disco quando é arquivo local. Capas por URL (como as do seed) ficam.
+// Apaga a capa do disco quando é arquivo local. Capas por URL ficam.
 const apagarCapa = (coverImage) => {
-    if (!coverImage || /^https?:\/\//i.test(coverImage)) return;
+    if (!coverImage || ehUrl(coverImage)) return;
     fs.unlink(path.join(__dirname, '..', coverImage), (err) => {
         if (err && err.code !== 'ENOENT') console.error('Erro ao apagar a capa:', err);
     });
 };
 
-// Rota POST para adicionar um novo livro
-router.post('/', authMiddleware, upload.single('coverImage'), async (req, res) => {
-    console.log('Arquivo recebido:', req.file); // Exibe no console o arquivo recebido pelo servidor.
-    console.log('Corpo da requisição:', req.body); // Exibe no console o corpo da requisição com os dados do livro.
+// ---- Validação ------------------------------------------------------------
+const limparIsbn = (isbn) => String(isbn || '').replace(/[-\s]/g, '');
+const escaparRegex = (texto) => texto.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-    try {
-        const { title, author, description, year, genre, pageCount, coverType, isbn } = req.body;
+// Devolve {dados, erros}. Com parcial=true, só valida os campos enviados (edição).
+function validarLivro(body, parcial = false) {
+    const erros = {};
+    const dados = {};
+    const anoAtual = new Date().getFullYear();
+    const texto = (campo, rotulo, maximo) => {
+        if (body[campo] === undefined) {
+            if (!parcial) erros[campo] = `Informe ${rotulo}`;
+            return;
+        }
+        const valor = String(body[campo]).trim();
+        if (!valor) erros[campo] = `Informe ${rotulo}`;
+        else if (valor.length > maximo) erros[campo] = `${rotulo} deve ter até ${maximo} caracteres`;
+        else dados[campo] = valor;
+    };
+    texto('title', 'o título', 200);
+    texto('author', 'o autor', 150);
+    texto('description', 'a descrição', 3000);
 
-        // Cria um novo livro com os dados recebidos e o caminho da imagem (se fornecido)
-        const newBook = new Book({
-            title,
-            author,
-            description,
-            year,
-            genre,
-            pageCount,
-            coverType,
-            isbn,
-            coverImage: req.file ? caminhoDaCapa(req.file) : null // Caminho relativo da capa, se enviada.
-        });
-
-        await newBook.save(); // Salva o novo livro no banco de dados.
-        console.log('Livro criado com sucesso:', newBook); // Exibe no console o livro criado com sucesso.
-        res.status(201).json(newBook); // Retorna o livro criado como resposta.
-    } catch (error) {
-        console.error('Erro ao salvar livro:', error); // Exibe no console um erro caso ocorra durante o processo de criação.
-        res.status(500).json({ message: error.message }); // Retorna um erro 500 caso falhe ao salvar o livro.
+    if (body.year !== undefined || !parcial) {
+        const ano = Number(body.year);
+        if (!Number.isInteger(ano) || ano < 1400 || ano > anoAtual + 1) erros.year = `Ano deve estar entre 1400 e ${anoAtual + 1}`;
+        else dados.year = ano;
     }
-});
+    if (body.genre !== undefined || !parcial) {
+        if (!Book.GENEROS.includes(body.genre)) erros.genre = `Gênero deve ser um destes: ${Book.GENEROS.join(', ')}`;
+        else dados.genre = body.genre;
+    }
+    if (body.pageCount !== undefined || !parcial) {
+        const paginas = Number(body.pageCount);
+        if (!Number.isInteger(paginas) || paginas < 1 || paginas > 20000) erros.pageCount = 'Número de páginas inválido';
+        else dados.pageCount = paginas;
+    }
+    if (body.coverType !== undefined || !parcial) {
+        if (!Book.TIPOS_CAPA.includes(body.coverType)) erros.coverType = 'Tipo de capa deve ser Dura ou Mole';
+        else dados.coverType = body.coverType;
+    }
+    if (body.isbn !== undefined || !parcial) {
+        const isbn = limparIsbn(body.isbn);
+        if (!/^\d{10}$|^\d{13}$/.test(isbn)) erros.isbn = 'ISBN deve ter 10 ou 13 dígitos';
+        else dados.isbn = isbn;
+    }
+    if (body.coverUrl !== undefined && String(body.coverUrl).trim()) {
+        const url = String(body.coverUrl).trim();
+        if (!ehUrl(url) || url.length > 500) erros.coverUrl = 'URL da capa inválida';
+        else dados.coverUrl = url;
+    }
+    return { dados, erros };
+}
 
-// Rota GET para obter todos os livros
+const responderErroMongo = (res, error, mensagem) => {
+    if (error && error.code === 11000) {
+        return res.status(400).json({ message: 'Já existe um livro com esse ISBN', erros: { isbn: 'ISBN já cadastrado' } });
+    }
+    if (error && error.name === 'ValidationError') {
+        return res.status(400).json({ message: error.message });
+    }
+    if (error && error.name === 'CastError') {
+        return res.status(400).json({ message: 'Identificador inválido' });
+    }
+    console.error(mensagem + ':', error);
+    res.status(500).json({ message: mensagem });
+};
+
+// ---- Enriquecimento: nota média, total de avaliações e situação -----------
+// Situação vem das reservas ativas: 'emprestado' > 'reservado' > 'disponivel'.
+const ETAPAS_RESUMO = [
+    { $lookup: { from: 'reviews', localField: '_id', foreignField: 'bookId', as: 'avaliacoes' } },
+    {
+        $lookup: {
+            from: 'reservations',
+            let: { id: '$_id' },
+            pipeline: [
+                { $match: { $expr: { $and: [{ $eq: ['$book', '$$id'] }, { $in: ['$status', Reservation.ATIVOS] }] } } },
+                { $project: { status: 1, user: 1 } },
+            ],
+            as: 'reservasAtivas',
+        },
+    },
+    {
+        $addFields: {
+            totalAvaliacoes: { $size: '$avaliacoes' },
+            notaMedia: {
+                $cond: [{ $gt: [{ $size: '$avaliacoes' }, 0] }, { $round: [{ $avg: '$avaliacoes.rating' }, 1] }, null],
+            },
+            situacao: {
+                $switch: {
+                    branches: [
+                        { case: { $in: ['Emprestado', '$reservasAtivas.status'] }, then: 'emprestado' },
+                        { case: { $in: ['Reservado', '$reservasAtivas.status'] }, then: 'reservado' },
+                    ],
+                    default: 'disponivel',
+                },
+            },
+        },
+    },
+    { $project: { avaliacoes: 0 } },
+];
+
+const ORDENS = {
+    recentes: { _id: -1 },
+    titulo: { title: 1 },
+    autor: { author: 1, title: 1 },
+    ano: { year: -1, title: 1 },
+    nota: { notaMedia: -1, totalAvaliacoes: -1, title: 1 },
+};
+
+// ---- Rotas ----------------------------------------------------------------
+
+// Lista (pública). Filtros opcionais: ?genero=Fantasia&q=texto&ordem=titulo&limite=8
 router.get('/', async (req, res) => {
     try {
-        const books = await Book.find(); // Busca todos os livros no banco de dados.
-        res.status(200).json(books); // Retorna os livros encontrados como resposta.
+        const filtro = {};
+        if (req.query.genero && Book.GENEROS.includes(req.query.genero)) filtro.genre = req.query.genero;
+        const q = String(req.query.q || '').trim();
+        if (q) {
+            const regex = new RegExp(escaparRegex(q), 'i');
+            filtro.$or = [{ title: regex }, { author: regex }];
+        }
+        const ordem = ORDENS[req.query.ordem] || ORDENS.recentes;
+        const etapas = [{ $match: filtro }, ...ETAPAS_RESUMO, { $project: { reservasAtivas: 0 } }, { $sort: ordem }];
+        const limite = Number(req.query.limite);
+        if (Number.isInteger(limite) && limite > 0) etapas.push({ $limit: Math.min(limite, 100) });
+        const livros = await Book.aggregate(etapas).collation({ locale: 'pt', strength: 1 });
+        res.status(200).json(livros);
     } catch (error) {
-        console.error('Erro ao buscar livros:', error); // Exibe no console um erro caso ocorra durante a busca.
-        res.status(500).json({ message: 'Erro ao buscar livros' }); // Retorna um erro 500 caso falhe ao buscar os livros.
+        responderErroMongo(res, error, 'Erro ao buscar livros');
     }
 });
 
-// Rota GET para obter os dois últimos livros adicionados
+// Últimos adicionados (?limite=8, padrão 8)
 router.get('/recent', async (req, res) => {
     try {
-        const recentBooks = await Book.find().sort({ _id: -1 }).limit(2); // Busca os dois livros mais recentes, ordenados pelo ID.
-        res.status(200).json(recentBooks); // Retorna os livros recentes encontrados como resposta.
+        const limite = Math.min(Number(req.query.limite) || 8, 50);
+        const livros = await Book.aggregate([...ETAPAS_RESUMO, { $project: { reservasAtivas: 0 } }, { $sort: { _id: -1 } }, { $limit: limite }]);
+        res.status(200).json(livros);
     } catch (error) {
-        console.error('Erro ao buscar livros recentes:', error); // Exibe no console um erro caso ocorra durante a busca.
-        res.status(500).json({ message: 'Erro ao buscar livros recentes' }); // Retorna um erro 500 caso falhe ao buscar os livros recentes.
+        responderErroMongo(res, error, 'Erro ao buscar livros recentes');
     }
 });
 
-// Rota GET para buscar livros por título ou autor (?q=texto). Precisa vir antes de '/:id'.
+// Busca rápida do cabeçalho (?q=texto). Precisa vir antes de '/:id'.
 router.get('/search', async (req, res) => {
     const q = String(req.query.q || '').trim();
-    if (!q) {
-        return res.status(200).json({ books: [] });
-    }
+    if (!q) return res.status(200).json({ books: [] });
     try {
-        const regex = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'); // Texto literal, sem metacaracteres
-        const books = await Book.find({ $or: [{ title: regex }, { author: regex }] }).limit(10);
+        const regex = new RegExp(escaparRegex(q), 'i');
+        const books = await Book.find({ $or: [{ title: regex }, { author: regex }] })
+            .select('title author genre coverImage year')
+            .sort({ title: 1 })
+            .limit(8);
         res.status(200).json({ books });
     } catch (error) {
-        console.error('Erro na busca de livros:', error);
-        res.status(500).json({ message: 'Erro na busca de livros' });
+        responderErroMongo(res, error, 'Erro na busca de livros');
     }
 });
 
-// Rota GET para obter um livro pelo ID
-router.get('/:id', async (req, res) => {
+// Um livro, com situação e (se logado) a reserva ativa do próprio usuário.
+router.get('/:id', authOpcional, async (req, res) => {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+        return res.status(400).json({ message: 'Identificador inválido' });
+    }
     try {
-        const book = await Book.findById(req.params.id); // Encontra o livro pelo ID fornecido na URL.
-        if (!book) {
-            return res.status(404).json({ message: 'Livro não encontrado' }); // Retorna um erro 404 caso o livro não seja encontrado.
-        }
-        res.status(200).json(book); // Retorna o livro encontrado como resposta.
+        const [livro] = await Book.aggregate([
+            { $match: { _id: new mongoose.Types.ObjectId(req.params.id) } },
+            ...ETAPAS_RESUMO,
+        ]);
+        if (!livro) return res.status(404).json({ message: 'Livro não encontrado' });
+        const minha = req.userId
+            ? (livro.reservasAtivas || []).find((r) => String(r.user) === String(req.userId))
+            : null;
+        delete livro.reservasAtivas;
+        livro.minhaReserva = minha ? { _id: minha._id, status: minha.status } : null;
+        res.status(200).json(livro);
     } catch (error) {
-        console.error('Erro ao buscar livro:', error); // Exibe no console um erro caso ocorra durante a busca.
-        res.status(500).json({ message: 'Erro ao buscar livro' }); // Retorna um erro 500 caso falhe ao buscar o livro.
+        responderErroMongo(res, error, 'Erro ao buscar livro');
     }
 });
 
-// Rota PUT para atualizar um livro pelo ID
-router.put('/:id', authMiddleware, upload.single('coverImage'), async (req, res) => {
+// Cadastrar (bibliotecário). Aceita multipart (campo coverImage) ou JSON com coverUrl.
+router.post('/', authMiddleware, somenteBibliotecario, upload.single('coverImage'), async (req, res) => {
+    const { dados, erros } = validarLivro(req.body);
+    if (Object.keys(erros).length) {
+        if (req.file) apagarCapa(caminhoDaCapa(req.file));
+        return res.status(400).json({ message: 'Confira os campos destacados', erros });
+    }
     try {
-        // Extração dos dados enviados no corpo da requisição
-        const { 
-            title, 
-            author, 
-            description, 
-            year, 
-            genre, 
-            pageCount, 
-            coverType, 
-            isbn 
-        } = req.body;
-
-        // Buscar o livro pelo ID
-        const book = await Book.findById(req.params.id);
-        if (!book) {
-            return res.status(404).json({ message: 'Livro não encontrado' }); // Retorna erro caso o livro não seja encontrado.
-        }
-
-        // Atualiza o campo coverImage se um novo arquivo for enviado
-        if (req.file) {
-            apagarCapa(book.coverImage); // Remove a imagem anterior, se for arquivo local
-            book.coverImage = caminhoDaCapa(req.file); // Atualiza o caminho da imagem com o novo arquivo.
-        }
-
-        // Atualiza os outros campos do livro com os dados fornecidos ou mantém os valores antigos
-        book.title = title || book.title;
-        book.author = author || book.author;
-        book.description = description || book.description;
-        book.year = year || book.year;
-        book.genre = genre || book.genre;
-        book.pageCount = pageCount || book.pageCount;
-        book.coverType = coverType || book.coverType;
-        book.isbn = isbn || book.isbn;
-
-        // Salva as alterações no banco de dados
-        const updatedBook = await book.save();
-
-        res.status(200).json(updatedBook); // Retorna o livro atualizado como resposta.
+        const { coverUrl, ...campos } = dados;
+        const livro = await Book.create({
+            ...campos,
+            coverImage: req.file ? caminhoDaCapa(req.file) : (coverUrl || null),
+        });
+        res.status(201).json(livro);
     } catch (error) {
-        console.error('Erro ao atualizar livro:', error); // Exibe no console um erro caso ocorra durante a atualização.
-        res.status(500).json({ message: 'Erro ao atualizar livro' }); // Retorna um erro 500 caso falhe ao atualizar o livro.
+        if (req.file) apagarCapa(caminhoDaCapa(req.file));
+        responderErroMongo(res, error, 'Erro ao salvar livro');
     }
 });
 
-// Rota DELETE para excluir um livro pelo ID
-router.delete('/:id', authMiddleware, async (req, res) => {
+// Editar (bibliotecário). Só altera o que foi enviado; capa nova substitui a antiga.
+router.put('/:id', authMiddleware, somenteBibliotecario, upload.single('coverImage'), async (req, res) => {
+    const { dados, erros } = validarLivro(req.body, true);
+    if (Object.keys(erros).length) {
+        if (req.file) apagarCapa(caminhoDaCapa(req.file));
+        return res.status(400).json({ message: 'Confira os campos destacados', erros });
+    }
     try {
-        const book = await Book.findById(req.params.id);
-        if (!book) {
+        const livro = await Book.findById(req.params.id);
+        if (!livro) {
+            if (req.file) apagarCapa(caminhoDaCapa(req.file));
             return res.status(404).json({ message: 'Livro não encontrado' });
         }
-        apagarCapa(book.coverImage); // Deleta a imagem do livro, se for arquivo local
-        await Book.findByIdAndDelete(req.params.id); // Deleta o livro pelo ID
-        res.status(200).json({ message: 'Livro deletado com sucesso' }); // Retorna sucesso após deletar o livro.
+        const { coverUrl, ...campos } = dados;
+        Object.assign(livro, campos);
+        if (req.file) {
+            apagarCapa(livro.coverImage);
+            livro.coverImage = caminhoDaCapa(req.file);
+        } else if (coverUrl) {
+            apagarCapa(livro.coverImage);
+            livro.coverImage = coverUrl;
+        } else if (String(req.body.removerCapa) === 'true') {
+            apagarCapa(livro.coverImage);
+            livro.coverImage = null;
+        }
+        await livro.save();
+        res.status(200).json(livro);
     } catch (error) {
-        res.status(500).json({ message: 'Erro ao deletar livro' }); // Retorna um erro 500 caso falhe ao deletar o livro.
+        responderErroMongo(res, error, 'Erro ao atualizar livro');
     }
 });
 
-// Exporta o roteador para ser utilizado em outros arquivos da aplicação
-module.exports = router; 
+// Excluir (bibliotecário). Não exclui livro com reserva ou empréstimo em aberto.
+router.delete('/:id', authMiddleware, somenteBibliotecario, async (req, res) => {
+    try {
+        const livro = await Book.findById(req.params.id);
+        if (!livro) return res.status(404).json({ message: 'Livro não encontrado' });
+        const ativa = await Reservation.exists({ book: livro._id, status: { $in: Reservation.ATIVOS } });
+        if (ativa) {
+            return res.status(400).json({ message: 'Este livro tem reserva ou empréstimo em aberto. Finalize antes de excluir.' });
+        }
+        apagarCapa(livro.coverImage);
+        await Promise.all([
+            Review.deleteMany({ bookId: livro._id }),
+            Reservation.deleteMany({ book: livro._id }),
+            livro.deleteOne(),
+        ]);
+        res.status(200).json({ message: 'Livro excluído' });
+    } catch (error) {
+        responderErroMongo(res, error, 'Erro ao excluir livro');
+    }
+});
+
+module.exports = router;

@@ -1,33 +1,23 @@
-const mongoose = require('mongoose'); // Importa o mongoose para manipulação de modelos e esquemas no MongoDB.
+const mongoose = require('mongoose');
 
-// Define o esquema de reservas com campos e validações
+// Ciclo de vida: Reservado -> Emprestado -> Devolvido. Uma reserva ainda não
+// retirada pode virar Cancelado (pelo leitor ou pelo bibliotecário).
+const STATUS = ['Reservado', 'Emprestado', 'Devolvido', 'Cancelado'];
+
 const reservationSchema = new mongoose.Schema({
-    book: { 
-        type: mongoose.Schema.Types.ObjectId, // Referencia o ID de um documento na coleção "Book".
-        ref: 'Book', // Define a referência para o modelo "Book".
-        required: true // Torna obrigatório especificar um livro para a reserva.
-    },
-    user: { 
-        type: mongoose.Schema.Types.ObjectId, // Referencia o ID de um documento na coleção "User".
-        ref: 'User', // Define a referência para o modelo "User".
-        required: true // Torna obrigatório especificar um usuário para a reserva.
-    },
-    status: { 
-        type: String, // Define o status como uma string.
-        enum: ['Reservado', 'Emprestado', 'Devolvido'], // Valores permitidos para o status.
-        default: 'Reservado' // Valor padrão para o status caso não seja especificado.
-    },
-    reservedAt: { 
-        type: Date, // Campo para a data em que a reserva foi feita.
-        default: Date.now // Define o valor padrão como a data/hora atual.
-    },
-    loanedAt: { 
-        type: Date // Campo opcional para a data em que o livro foi emprestado.
-    },
-    returnedAt: { 
-        type: Date // Campo opcional para a data em que o livro foi devolvido.
-    },
+    book: { type: mongoose.Schema.Types.ObjectId, ref: 'Book', required: true },
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    status: { type: String, enum: STATUS, default: 'Reservado' },
+    reservedAt: { type: Date, default: Date.now },
+    loanedAt: { type: Date },
+    returnedAt: { type: Date },
+    canceledAt: { type: Date },
 });
 
-// Exporta o modelo baseado no esquema de reservas para ser usado em outras partes da aplicação.
-module.exports = mongoose.model('Reservation', reservationSchema);
+reservationSchema.index({ book: 1, status: 1 });
+reservationSchema.index({ user: 1, reservedAt: -1 });
+
+const Reservation = mongoose.model('Reservation', reservationSchema);
+Reservation.STATUS = STATUS;
+Reservation.ATIVOS = ['Reservado', 'Emprestado'];
+module.exports = Reservation;

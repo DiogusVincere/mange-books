@@ -1,20 +1,56 @@
 const jwt = require('jsonwebtoken');
+const User = require('../models/user');
 
-// Exige um token JWT válido no cabeçalho "Authorization: Bearer <token>" e
-// deixa o id do usuário em req.userId para as rotas seguintes.
-exports.authMiddleware = (req, res, next) => {
+const extrairToken = (req) => {
     const cabecalho = req.header('Authorization') || '';
-    const token = cabecalho.startsWith('Bearer ') ? cabecalho.slice(7).trim() : null;
+    return cabecalho.startsWith('Bearer ') ? cabecalho.slice(7).trim() : null;
+};
 
+// Exige token válido; deixa o id em req.userId.
+exports.authMiddleware = (req, res, next) => {
+    const token = extrairToken(req);
     if (!token) {
-        return res.status(401).json({ message: 'Acesso não autorizado' });
+        return res.status(401).json({ message: 'Faça login para continuar' });
     }
-
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        req.userId = decoded.userId;
+        req.userId = jwt.verify(token, process.env.JWT_SECRET).userId;
         next();
     } catch (error) {
-        res.status(401).json({ message: 'Token inválido ou expirado' });
+        res.status(401).json({ message: 'Sessão inválida ou expirada' });
     }
 };
+
+// Token opcional: se vier e for válido, preenche req.userId; nunca bloqueia.
+exports.authOpcional = (req, res, next) => {
+    const token = extrairToken(req);
+    if (token) {
+        try {
+            req.userId = jwt.verify(token, process.env.JWT_SECRET).userId;
+        } catch (error) {
+            // token velho: segue como visitante
+        }
+    }
+    next();
+};
+
+// Carrega o papel do usuário logado em req.papel (depois de authMiddleware).
+exports.comPapel = async (req, res, next) => {
+    try {
+        const usuario = await User.findById(req.userId).select('role');
+        if (!usuario) {
+            return res.status(401).json({ message: 'Usuário não encontrado' });
+        }
+        req.papel = usuario.role;
+        next();
+    } catch (error) {
+        res.status(500).json({ message: 'Erro ao verificar permissões' });
+    }
+};
+
+// Só bibliotecários passam (depois de authMiddleware).
+exports.somenteBibliotecario = [exports.comPapel, (req, res, next) => {
+    if (req.papel !== 'bibliotecario') {
+        return res.status(403).json({ message: 'Ação permitida apenas para bibliotecários' });
+    }
+    next();
+}];

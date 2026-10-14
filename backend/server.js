@@ -37,6 +37,7 @@ async function iniciar() {
     await mongoose.connect(uri);
     console.log('Conectado ao MongoDB com sucesso!');
 
+    app.locals.modoDemo = MODO_DEMO;
     if (MODO_DEMO) {
         const { seed } = require('./seed');
         await seed();
