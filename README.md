@@ -1,143 +1,157 @@
-# Mange Book
+# Mange Books
 
-Sistema de biblioteca: catálogo de livros, reservas e empréstimos, avaliações e relatórios, com cadastro e login de usuários. Front em Vue 3 e API em Express com MongoDB.
+[![CI](https://github.com/DiogusVincere/mange-books/actions/workflows/ci.yml/badge.svg)](https://github.com/DiogusVincere/mange-books/actions/workflows/ci.yml)
+[![Licença MIT](https://img.shields.io/badge/licen%C3%A7a-MIT-1e4d4a)](LICENSE)
+
+Sistema de biblioteca: catálogo com busca e filtros, reservas com ciclo completo (reserva, retirada, devolução, cancelamento), avaliações com nota e comentário, dois papéis de usuário (leitor e bibliotecário) e relatórios calculados sobre os dados reais. Front em Vue 3, API em Express com MongoDB.
+
+**Demonstração:** https://mange-books.vercel.app
+
+| Conta | E-mail | Senha | O que faz |
+| --- | --- | --- | --- |
+| Bibliotecária | `demo@demo.com` | `demo1234` | acervo, reservas e empréstimos, usuários, relatórios |
+| Leitor | `leitor@demo.com` | `demo1234` | reservar, avaliar, acompanhar empréstimos |
+
+A API da demonstração roda num serviço gratuito que dorme quando ninguém usa: a primeira
+requisição pode levar meio minuto. Os dados voltam ao padrão a cada reinício.
+
+## Telas
+
+![Página inicial](docs/prints/inicio.jpg)
+
+![Página do livro](docs/prints/livro.jpg)
+
+![Painel da biblioteca: relatórios](docs/prints/painel.jpg)
 
 ## Funcionalidades
 
-- Cadastro de usuário (nome, CPF, telefone, endereço completado pelo ViaCEP) e login com token JWT, válido por 1 hora.
-- Catálogo com filtro por gênero (Fantasia, Terror, Drama, Suspense, Ação, Ficção) e busca por título ou autor no cabeçalho.
-- Página do livro: capa, autor, páginas, tipo de capa, ISBN, avaliações (nota de 1 a 5 e comentário) e botão de reserva.
-- Página inicial com carrossel, últimos livros adicionados e próximos eventos.
-- Área logada: cadastrar livro com capa (upload até 2 MB), editar e excluir livros do catálogo.
-- Reservas: reservar, registrar empréstimo e devolução, histórico de empréstimos.
-- Perfil do usuário logado; lista de usuários com detalhes, edição e exclusão.
-- Relatórios com gráficos (Chart.js) e exportação em PDF e Excel. Os gráficos do front ainda usam dados de exemplo; a API expõe `/api/reports` com as agregações.
+**Para quem visita**
+
+- Página inicial com vitrine de capas, novidades, estantes por gênero e os mais bem avaliados.
+- Catálogo com busca por título ou autor, filtro por gênero, "só disponíveis" e ordenação (recentes, título, autor, ano, nota). Os filtros ficam na URL, então dá para compartilhar `/catalogo?genero=Terror`.
+- Página do livro com capa, ficha técnica, situação (disponível, reservado, emprestado), nota média, avaliações e sugestões do mesmo gênero.
+- Busca rápida no cabeçalho com resultados enquanto digita.
+
+**Para leitores (cadastro grátis)**
+
+- Reservar um livro disponível (até três reservas em aberto por pessoa) e cancelar enquanto não retirou.
+- Acompanhar cada reserva numa linha do tempo: reservado, retirado, devolvido.
+- Avaliar livros com estrelas e comentário; avaliar de novo atualiza a avaliação anterior.
+- Editar os próprios dados e trocar a senha.
+
+**Para bibliotecários**
+
+- Acervo: cadastrar, editar e excluir livros. A capa pode vir de um arquivo (até 2 MB), de uma URL ou da Open Library a partir do ISBN.
+- Reservas e empréstimos: registrar retirada e devolução, cancelar reservas, filtrar por situação e buscar por livro ou leitor.
+- Usuários: lista com busca, detalhe com histórico de reservas, edição, promoção a bibliotecário e exclusão.
+- Relatórios: indicadores gerais, livros mais reservados, leitores mais ativos, livros mais bem avaliados e acervo por gênero, com exportação em PDF e Excel.
 
 ## Stack
 
 | Camada | Tecnologias |
 | --- | --- |
-| Front | Vue 3, Vite, vue-router, axios, Chart.js, jsPDF, SheetJS (xlsx) |
-| Back | Node.js, Express, Mongoose (MongoDB Atlas ou local), jsonwebtoken, bcryptjs, multer, dotenv |
+| Front | Vue 3 (`<script setup>`), Vite, vue-router, axios, Chart.js, jsPDF, SheetJS |
+| API | Node.js 20, Express, Mongoose, jsonwebtoken, bcryptjs, multer |
+| Banco | MongoDB (Atlas, local ou embutido no processo para demonstração e testes) |
+| Testes e CI | `node:test` com `mongodb-memory-server`; GitHub Actions roda os testes da API e o build do front |
 
 ## Estrutura
 
 ```
 backend/
-  app.js             Express: CORS, JSON, /uploads e rotas (exporta o app)
-  server.js          lê o .env, conecta ao MongoDB e sobe o servidor
-  seed.js            cria o usuário demo e seis livros de exemplo
-  cleanup.js         manutenção: remove usuários sem username
-  controllers/       regras de autenticação, livros, reservas e avaliações
-  models/            User, Book, Reservation, Review, LoanHistory
-  routes/            /api/auth, /books, /reviews, /api/reservations, /api/reports
-  middleware/auth.js valida o token e põe req.userId
-  uploads/           capas enviadas (só o .gitkeep é versionado)
-  .env.example       variáveis necessárias
+  app.js               Express: CORS, JSON, /uploads, rotas, 404 e tratamento de erros (exporta o app)
+  server.js            lê o .env, conecta ao MongoDB (ou sobe o embutido) e abre a porta
+  seed.js              dados de demonstração: contas, 36 livros, avaliações e reservas
+  routes/              /books, /api/auth, /reviews, /api/reservations, /api/reports
+  controllers/         regras de autenticação, avaliações e reservas
+  models/              User (com papel), Book, Reservation, Review
+  middleware/auth.js   authMiddleware, authOpcional, comPapel, somenteBibliotecario
+  test/api.test.js     testes de integração pela rede (npm test)
 frontend/
-  src/api.js         instância única do axios (baseURL = VITE_API_URL) e urlImagem()
-  src/router/        rotas; as privadas têm meta.requiresAuth
-  src/views/         páginas
-  src/components/    componentes
-  src/assets/        imagens e CSS
-  .env.example       VITE_API_URL
-  vercel.json        deploy do front na Vercel
-render.yaml          deploy do back no Render
+  src/api.js           axios com token, tratamento de 401 e urlImagem()
+  src/sessao.js        estado do usuário logado (token + perfil + papel)
+  src/router/          rotas; meta.requiresAuth e meta.bibliotecario protegem o painel
+  src/views/           páginas públicas e do painel (views/painel)
+  src/components/      layout (cabeçalho, rodapé, painel), ui (capa, estrelas, avisos, confirmação) e formulários
+  src/assets/main.css  tokens de cor e tipografia, botões, campos, cartões, tabelas
+.github/workflows/ci.yml   testes da API + build do front a cada push
+render.yaml                deploy da API no Render (modo demonstração por padrão)
+frontend/vercel.json       deploy do front na Vercel
 ```
 
 ## Como rodar
 
-Pré-requisitos: Node.js 18 ou mais novo (recomendado 20), npm e um MongoDB.
+Pré-requisitos: Node.js 18 ou mais novo (recomendado 20) e npm. **Não precisa de MongoDB instalado**: sem `MONGO_URI` a API sobe um MongoDB embutido no processo (baixado uma vez no `npm install`) já com os dados de demonstração.
 
-1. **Banco de dados.** No [MongoDB Atlas](https://www.mongodb.com/atlas) (plano gratuito) crie um cluster, um usuário de banco e libere o seu IP em *Network Access*; copie a string de conexão (`mongodb+srv://USUARIO:SENHA@...`). Ou use um MongoDB local: `mongodb://localhost:27017/mangebook`.
+```bash
+# API (http://localhost:5000)
+cd backend
+cp .env.example .env     # pode deixar MONGO_URI vazio
+npm install
+npm run dev              # em produção: npm start
 
-2. **Back-end.**
+# Front (http://localhost:5173), em outro terminal
+cd frontend
+cp .env.example .env     # VITE_API_URL=http://localhost:5000
+npm install
+npm run dev
+```
 
-   ```bash
-   cd backend
-   cp .env.example .env      # preencha MONGO_URI e JWT_SECRET
-   npm install
-   npm run seed              # opcional: usuário demo e seis livros
-   npm run dev               # http://localhost:5000 (nodemon); em produção, npm start
-   ```
+Com um MongoDB de verdade (Atlas ou local), preencha `MONGO_URI` e `JWT_SECRET` no `backend/.env` e rode `npm run seed` para criar os dados de exemplo. Para gerar um `JWT_SECRET` forte:
 
-   Para gerar um `JWT_SECRET` forte: `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`.
+```bash
+node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
+```
 
-3. **Front-end.**
+## Testes
 
-   ```bash
-   cd frontend
-   cp .env.example .env      # VITE_API_URL=http://localhost:5000
-   npm install
-   npm run dev               # http://localhost:5173
-   ```
+```bash
+cd backend
+npm test
+```
 
-Os arquivos `package-lock.json` foram removidos ao podar dependências; o `npm install` gera novos.
-
-Conta de demonstração criada pelo seed: **demo@demo.com** / **demo1234**.
+Doze testes de integração sobem um MongoDB embutido, rodam o seed e exercitam a API pela rede: catálogo e filtros, login e cadastro, permissões por papel, livros (validação por campo, ISBN duplicado, exclusão bloqueada com reserva em aberto), avaliações (criar, atualizar, excluir), ciclo da reserva, limite de três reservas, relatórios, gestão de usuários e troca de senha. O mesmo conjunto roda no GitHub Actions a cada push.
 
 ## API
 
-| Método | Rota | Precisa de token |
+Token no cabeçalho `Authorization: Bearer <token>` (dura 12 horas). Respostas de erro vêm como `{ "message": "..." }` e, quando há validação por campo, `{ "message": "...", "erros": { "campo": "motivo" } }`.
+
+| Método | Rota | Quem |
 | --- | --- | --- |
-| POST | `/api/auth/register`, `/api/auth/login` | não |
-| GET | `/api/auth/me` | sim |
-| GET, PUT, DELETE | `/api/auth` (lista) e `/api/auth/:id` | sim |
-| GET | `/books`, `/books/recent`, `/books/search?q=`, `/books/:id` | não |
-| POST, PUT, DELETE | `/books`, `/books/:id` (multipart, campo `coverImage`) | sim |
-| GET | `/reviews/:bookId` | não |
-| POST, DELETE | `/reviews/create`, `/reviews/:reviewId` | sim |
-| POST, GET | `/api/reservations/reserve`, `/loan`, `/return`, `/history`, `/` | sim |
-| GET | `/api/reports/books`, `/users`, `/ratings` | sim |
+| POST | `/api/auth/register`, `/api/auth/login` | todos |
+| GET | `/api/auth/me` · PUT `/api/auth/me/senha` | logado |
+| GET | `/api/auth` (lista) · DELETE `/api/auth/:id` | bibliotecário |
+| GET, PUT | `/api/auth/:id` (o campo `role` só por bibliotecário) | o próprio ou bibliotecário |
+| GET | `/books` (`?genero=&q=&ordem=&limite=`), `/books/recent`, `/books/search?q=`, `/books/:id` | todos (com token, `/books/:id` traz `minhaReserva`) |
+| POST, PUT, DELETE | `/books`, `/books/:id` (JSON com `coverUrl` ou multipart com `coverImage`) | bibliotecário |
+| GET | `/reviews/:bookId` | todos |
+| POST, DELETE | `/reviews/create` (cria ou atualiza a sua), `/reviews/:reviewId` | logado (excluir: autor ou bibliotecário) |
+| POST | `/api/reservations/reserve`, `/api/reservations/cancel` | logado |
+| GET | `/api/reservations` (as suas), `/api/reservations/history` | logado |
+| GET | `/api/reservations/todas?status=` · POST `/loan`, `/return` | bibliotecário |
+| GET | `/api/reports/resumo`, `/books`, `/users`, `/ratings` | bibliotecário |
 
-Token no cabeçalho `Authorization: Bearer <token>`. A capa de um livro vem em `coverImage` como caminho relativo (`uploads/arquivo.jpg`, servido em `/uploads`) ou como URL completa (livros do seed).
+Cada livro da lista vem com `notaMedia`, `totalAvaliacoes` e `situacao` (`disponivel`, `reservado` ou `emprestado`), calculados por agregação a partir das avaliações e das reservas ativas. A capa (`coverImage`) é um caminho relativo servido em `/uploads` ou uma URL completa.
 
-## Segurança
+## Decisões e segurança
 
-O que foi fechado nesta versão:
+- **Papéis.** Quem se cadastra é sempre leitor; só um bibliotecário promove outro. Ninguém altera o próprio papel nem exclui a própria conta pela API.
+- **Regras de reserva.** Um livro só tem uma reserva ativa por vez; cada leitor tem no máximo três em aberto; livro com reserva ou empréstimo em aberto não pode ser excluído; devolução só de livro emprestado; cancelamento só antes da retirada.
+- **Senhas** com hash bcrypt; o hash nunca sai em resposta nenhuma. A troca de senha exige a senha atual. Login com e-mail errado e senha errada devolvem a mesma mensagem.
+- **Entrada validada** no servidor com mensagem por campo (livros, cadastro, edição de usuário, avaliações). Upload aceita só imagem até 2 MB.
+- **Configuração por ambiente**: `MONGO_URI`, `JWT_SECRET` e `CORS_ORIGIN` vêm do `.env`; o repositório tem só o `.env.example`.
+- **Histórico do repositório reescrito** numa versão anterior para remover credenciais que haviam sido commitadas; os valores antigos foram trocados.
 
-- **Histórico reescrito.** `backend/.env`, logs (que traziam senhas em texto puro de uma versão antiga do cadastro), `node_modules`, `uploads`, caches do Vite e `Thumbs.db` saíram de todos os commits; a string de conexão do Mongo e o `JWT_SECRET` antigos foram substituídos em qualquer ocorrência. **Mesmo assim, troque a senha do usuário do Atlas e gere um `JWT_SECRET` novo**: os valores antigos já circularam.
-- Rotas de usuário (listar, consultar, editar, excluir) e as de escrita de livros e de relatórios exigem token. Cadastro, login, catálogo e leitura de avaliações continuam abertos.
-- Nenhuma resposta devolve o hash da senha nem o objeto de erro interno do servidor.
-- Atualização de usuário aceita só os campos previstos e ignora `password` (o `findByIdAndUpdate` não passa pelo hash); ainda não há troca de senha.
-- O token não é mais escrito no console (front e back); o back não despeja mais documentos com CPF nos logs.
-- CORS e URL da API saem de variáveis de ambiente; `.env` ignorado pelo git, com `.env.example` nos dois lados.
-
-O que ainda falta:
-
-- Não há perfis (administrador × leitor): qualquer usuário logado pode cadastrar e excluir livros e usuários.
-- Token de 1 hora sem renovação; o front só confere se existe token, não se expirou.
-- Validação de entrada mínima (CPF, telefone e ISBN sem formato conferido).
-- Os relatórios do front são estáticos.
+O que ainda não existe: renovação de token, recuperação de senha por e-mail, prazo de devolução com multa e e-mail para o leitor quando o livro é liberado.
 
 ## Implantação
 
-Back no **Render** e front na **Vercel**. O back grava capas em disco (`uploads/`) e mantém conexão persistente com o Mongo, o que não combina com função serverless; por isso não foi para a Vercel.
+- **API no Render** (`render.yaml`): *New > Blueprint* apontando para este repositório. Sem `MONGO_URI` ela sobe em modo demonstração. Para dados persistentes, acrescente `MONGO_URI` no painel do Render. No plano gratuito o disco é efêmero: capas enviadas por upload somem no reinício; use capas por URL ou um disco pago.
+- **Front na Vercel** (`frontend/vercel.json`): importar o repositório com *Root Directory* = `frontend` e definir `VITE_API_URL` com a URL do Render. O rewrite para `index.html` atende ao vue-router em modo history. Pré-visualizações de outros branches (`mange-books-*.vercel.app`) já são aceitas pelo CORS da API.
 
-- **Render** (`render.yaml` na raiz): *New > Blueprint*, apontar para este repositório e preencher `MONGO_URI`, `JWT_SECRET` e `CORS_ORIGIN` (a URL do front na Vercel; várias origens separadas por vírgula). No plano gratuito o disco é efêmero: as capas enviadas somem a cada deploy. Para persistir, use um disco do Render (bloco comentado no `render.yaml`) ou troque o armazenamento por um serviço externo.
-- **Vercel** (`frontend/vercel.json`): importar o repositório com *Root Directory* = `frontend` e definir `VITE_API_URL` com a URL do serviço do Render. O rewrite para `index.html` atende ao vue-router em modo history.
+## Autor
 
-## Modo demonstração (sem MongoDB)
-
-Sem `MONGO_URI`, o `server.js` sobe um **MongoDB embutido no próprio processo**
-(`mongodb-memory-server`), roda o seed e gera um `JWT_SECRET` temporário. É o modo da demo
-pública: o serviço gratuito reinicia de tempos em tempos e volta sempre com o usuário
-`demo@demo.com` / `demo1234` e os seis livros de exemplo. Tudo o que for cadastrado some no
-reinício. Com um Atlas ou Mongo local, basta definir `MONGO_URI` que o modo normal assume.
-
-## Telas
-
-![Página inicial do Mange Book](docs/prints/home.png)
-
-Página inicial da demonstração em https://mange-books.vercel.app: carrossel, últimos livros adicionados (capas pela Open Library) e busca. Entre com `demo@demo.com` / `demo1234` para ver reservas, avaliações e perfil.
-
-## Demonstração
-
-
-
-## Equipe
-
-- Diogo Vieira de Lima ([DiogusVincere](https://github.com/DiogusVincere))
+Diogo Vieira de Lima · [DiogusVincere](https://github.com/DiogusVincere)
 
 ## Licença
 
